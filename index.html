@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="An interactive, continuous zoom through single-molecule FISH: from one mRNA and its probes to diffraction-limited spots in a whole cell." />
+    <meta name="theme-color" content="#05070A" />
+    <title>smFISH Viewport</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <main id="viewport" aria-label="3D view">
+        <canvas id="gl" aria-label="Interactive 3D visualisation of smFISH"></canvas>
+        <div id="labels"></div>
+      </main>
+      <aside id="panel" aria-label="Controls"></aside>
+    </div>
+    <noscript>This interactive visualisation needs JavaScript and WebGL2.</noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
