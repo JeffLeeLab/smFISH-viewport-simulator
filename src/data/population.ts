@@ -1,5 +1,5 @@
 /**
- * Every RNA in the cell as a zoomable molecule (spec §3, §6.4): a record per RNA with its
+ * Every RNA in the cell as a zoomable molecule (spec §3, §6.3): a record per RNA with its
  * position, orientation and shape variant. Records resolve to molecule models from the
  * library, and their fluorophore positions are computed from the same molecular geometry
  * the molecular scene draws.

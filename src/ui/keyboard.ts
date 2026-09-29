@@ -10,7 +10,7 @@ export function bindKeyboard(store: Store, app: App): void {
     const t = e.target as HTMLElement;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) {
       if ((t as HTMLInputElement).type !== 'range') return;
-      if (!/^[1-4hwsgmdprf?[\]]$/i.test(e.key)) return;
+      if (!/^[1-3hwsgmdprf?[\]]$/i.test(e.key)) return;
     }
     const s = store.state;
     const k = e.key;
@@ -19,7 +19,6 @@ export function bindKeyboard(store: Store, app: App): void {
       case '1':
       case '2':
       case '3':
-      case '4':
         app.goToStage(Number(k) as Stage);
         break;
       case 'h':
@@ -53,7 +52,7 @@ export function bindKeyboard(store: Store, app: App): void {
       case '[':
       case ']': {
         const step = (CAMERA.zStepNm / 1000) * (k === ']' ? 1 : -1);
-        if (s.stage === 4) store.set({ cellFocalZ: Math.max(0, Math.min(6, Math.round((s.cellFocalZ + step) * 10) / 10)) });
+        if (s.stage === 3) store.set({ cellFocalZ: Math.max(0, Math.min(6, Math.round((s.cellFocalZ + step) * 10) / 10)) });
         else store.set({ focalZ: Math.max(-1.6, Math.min(1.6, Math.round((s.focalZ + step) * 10) / 10)) });
         break;
       }

@@ -12,7 +12,7 @@ import {
   computePose,
   dyePosition,
   generateChain,
-  NT_RISE_SS,
+  SS_HELIX_RISE,
   partnerPosition,
   siteFrame,
   vec,
@@ -161,10 +161,10 @@ export class MoleculeLibrary {
     const anchor = Math.floor((cds.start + cds.end) / 2);
     let rowPitch: number | undefined;
     if (kind === 'long') {
-      // Stack the CDS probe cluster (around the anchor) and the distal probe cluster four
+      // Stack the CDS probe cluster (around the anchor) and the distal probe cluster two
       // rows apart in same-direction rows, so both colours fall in one spot.
       const d = this.design.distal[Math.min(11, this.design.distal.length - 1)];
-      rowPitch = ((d.targetStart + d.targetEnd) / 2 - anchor) * NT_RISE_SS / 4;
+      rowPitch = (((d.targetStart + d.targetEnd) / 2 - anchor) * SS_HELIX_RISE) / 2;
     }
     const chain = generateChain({
       length: isoform.length,
@@ -203,6 +203,7 @@ export class MoleculeLibrary {
       length: L,
       anchor: Math.min(pc.anchor, L - 1),
       rest,
+      axis: pc.axis.slice(0, L * 3),
       step0: pc.step0.slice(0, (L - 1) * 3),
       baseDir0: pc.baseDir0.slice(0, L * 3),
       centroid: [cx / L, cy / L, cz / L],

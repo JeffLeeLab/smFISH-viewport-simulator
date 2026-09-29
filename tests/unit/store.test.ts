@@ -13,7 +13,7 @@ describe('URL hash', () => {
       chMagenta: false,
       chDapi: false,
       washed: true,
-      helical: true,
+      helical: false,
       longFraction: 0.35,
       seed: 42,
       mip: true,
@@ -40,10 +40,10 @@ describe('URL hash', () => {
     expect(p.longFraction).toBe(1);
   });
 
-  it('deep links to stages 3–4 imply a finished, washed experiment', () => {
-    expect(initialState('#stage=3')).toMatchObject({ hyb: 'bound', washed: true });
+  it('deep links to stages 2–3 imply a finished, washed experiment', () => {
+    expect(initialState('#stage=2')).toMatchObject({ hyb: 'bound', washed: true });
     expect(initialState('#stage=3&wash=0')).toMatchObject({ hyb: 'bound', washed: false });
-    expect(initialState('#stage=2')).toMatchObject({ hyb: 'running' });
-    expect(initialState('')).toMatchObject({ stage: 1, hyb: 'none' });
+    expect(initialState('#stage=1')).toMatchObject({ hyb: 'none' });
+    expect(initialState('')).toMatchObject({ stage: 1, hyb: 'none', helical: true });
   });
 });

@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import { featuredPlacement, type MoleculeLibrary, type MoleculeModel, type WorldModel } from '../../data/model';
 import { nearestRecords, recordModel, type RnaRecord } from '../../data/population';
 import type { ProbeSetId } from '../../data/probes';
-import { computePose, vec } from '../../data/conformation';
 import { MoleculeView } from './moleculeView';
 import { ProbeSystem, type BoundDye, type ProbeMaterials } from './probeSystem';
 import { CAP_COLOR, SET_COLOR } from '../palette';
@@ -373,68 +372,6 @@ export class MolecularScene {
   private disposeInstance(inst: Instance): void {
     inst.probes.dispose();
     inst.view.dispose();
-  }
-
-  /**
-   * Stage 2 view: the CDS probe cluster, looked at side-on and from the least cluttered
-   * direction so the rest of the coil does not block the view.
-   */
-  clusterView(id: 'long' | 'short', h = this.hTarget): { target: THREE.Vector3; dir: THREE.Vector3 } {
-    const view = this.views[id];
-    const m = this.world[id];
-    // Frame the cluster as it will look once bound: predict the hybridised pose.
-    const n = this.probes[id].probeCount || 10;
-    const zip = new Float32Array(view.L);
-    for (const s of m.sites) {
-      if (s.probe.rank >= n) continue;
-      for (let k = 0; k < s.frame.length; k++) zip[s.frame.start + k] = 1;
-    }
-    const pose = new Float32Array(view.L * 3);
-    computePose(m.chain, m.sites.map((s) => s.frame), m.siteOf, zip, h, pose);
-    const at = (i: number, out: THREE.Vector3) => view.localToScene(out.set(pose[i * 3], pose[i * 3 + 1], pose[i * 3 + 2]));
-
-    const ranks = m.sites.filter((s) => s.probe.set === 'cds' && s.probe.rank < Math.min(3, n));
-    const target = new THREE.Vector3();
-    const axis = new THREE.Vector3();
-    const tmp = new THREE.Vector3();
-    for (const s of ranks) {
-      target.add(at(s.frame.start + 9, tmp));
-      axis.add(new THREE.Vector3(...s.frame.u).applyQuaternion(view.group.quaternion));
-    }
-    target.divideScalar(Math.max(1, ranks.length));
-    axis.normalize();
-    // Candidate view directions perpendicular to the duplex axis; score the clutter that the
-    // near clip plane won't remove, plus (more weakly) strands just behind the cluster.
-    const e1 = new THREE.Vector3(...vec.norm(vec.cross([axis.x, axis.y, axis.z], [0, 0, 1])));
-    if (e1.lengthSq() < 0.1) e1.set(1, 0, 0);
-    const e2 = new THREE.Vector3().crossVectors(axis, e1).normalize();
-    const camDist = 70; // ~40 nm field of view
-    const clip = camDist * (1 - NEAR_CLIP);
-    let best = e1.clone();
-    let bestScore = Infinity;
-    const p = new THREE.Vector3();
-    const siteNt = new Set<number>();
-    for (const s of ranks) for (let k = -6; k < s.frame.length + 6; k++) siteNt.add(s.frame.start + k);
-    for (let k = 0; k < 36; k++) {
-      const a = (k / 36) * Math.PI * 2;
-      const d = e1.clone().multiplyScalar(Math.cos(a)).addScaledVector(e2, Math.sin(a)).normalize();
-      let score = Math.abs(d.z) > 0.85 ? 1e6 : 0;
-      for (let i = 0; i < view.L; i += 2) {
-        if (siteNt.has(i)) continue;
-        at(i, p).sub(target);
-        const along = p.dot(d);
-        if (along > clip || along < -60) continue;
-        const perp = p.addScaledVector(d, -along).length();
-        if (perp > 18) continue;
-        score += (1 - perp / 18) * (along > 3 ? 1 : 0.3);
-      }
-      score += d.z < -0.2 ? 25 : 0; // prefer looking from above
-      if (score < bestScore) {
-        bestScore = score;
-        best = d;
-      }
-    }
-    return { target, dir: best };
   }
 
   /**

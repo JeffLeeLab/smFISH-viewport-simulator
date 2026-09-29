@@ -1,5 +1,5 @@
 /**
- * Cell stage model (spec §6.4), in µm. The cell sits on the coverslip (z = 0) and z is the
+ * Cell stage model (spec §6.3), in µm. The cell sits on the coverslip (z = 0) and z is the
  * optical axis.
  */
 import { Rng, hashSeed } from './rng';
@@ -9,8 +9,8 @@ export const CELL_SEMI_A = 10; // µm, half of ~20 µm
 export const CELL_SEMI_B = 7.5; // µm, half of ~15 µm
 export const CELL_MAX_HEIGHT = 6;
 export const NUCLEUS_RADII: [number, number, number] = [5, 4, 2];
-export const N_CYTO = 150;
-export const N_NUCLEAR = 10;
+export const N_CYTO = 74;
+export const N_NUCLEAR = 6;
 export const N_TS = 2;
 export const DEFAULT_LONG_FRACTION = 0.6;
 
@@ -157,7 +157,7 @@ export function seedSpots(shape: CellShape): SpotSeed[] {
     // Mild perinuclear enrichment, as often seen for cytoplasmic mRNAs.
     const d = Math.hypot(x - nx, y - ny);
     if (rng.next() > 0.35 + 0.65 * Math.exp(-Math.max(0, d - 4) / 5)) continue;
-    // Keep clear of the featured pair so the stage 3 view shows just those two.
+    // Keep clear of the featured pair so the stage 2 view shows just those two.
     if (Math.hypot(x - fx, y - fy, z - fz) < 2.6) continue;
     out.push({ x, y, z, kind: 'cyto', u: rng.next() });
   }
@@ -187,7 +187,7 @@ export function seedSpots(shape: CellShape): SpotSeed[] {
     sites.push([x, y, z]);
   }
   sites.forEach((s, ts) => {
-    const n = 8 + rng.int(8);
+    const n = 6 + rng.int(6);
     for (let i = 0; i < n; i++) {
       // ~20% are complete but not yet released; the rest are still being transcribed.
       const progress = rng.next() < 0.2 ? 1 : rng.next();

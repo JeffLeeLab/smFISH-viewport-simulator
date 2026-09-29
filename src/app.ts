@@ -8,7 +8,7 @@ import type { WorldModel } from './data/model';
 import { makeCellShape, type CellShape } from './data/cell';
 import { Renderer } from './core/renderer';
 import { CameraRig, type View } from './core/cameraRig';
-import { BASE_LOD, sceneWeights, smoothstep, stageForScale, STAGE_FOV_NM, type SceneWeights } from './core/scale';
+import { BASE_LOD, MOLECULE_FIT_NM, sceneWeights, smoothstep, stageForScale, STAGE_FOV_NM, type SceneWeights } from './core/scale';
 import { QualityManager } from './core/quality';
 import { MolecularScene, NEAR_CLIP } from './scenes/molecular/molecularScene';
 import { OpticalScene } from './scenes/optical/opticalScene';
@@ -22,7 +22,7 @@ import { Help } from './ui/help';
 import { bindKeyboard } from './ui/keyboard';
 import { REGION_NAMES, regionOf } from './data/transcript';
 import { makeRecords, nearestRecords, recordDyes, recordKind, type RnaRecord } from './data/population';
-import { rotate } from './data/model';
+import { FEATURED_FACING, rotate } from './data/model';
 import { MAX_SPOTS, type OpticalSpotInput } from './scenes/optical/opticalScene';
 import type { BoundDye } from './scenes/molecular/probeSystem';
 
@@ -146,19 +146,18 @@ export class App {
     switch (stage) {
       case 1: {
         const target = molToWorld(this.mol.moleculeCentre(iso));
-        return { target, fovNm: STAGE_FOV_NM[1], ...this.anglesFor(new THREE.Vector3(0.35, -0.8, 0.62)) };
+        // Fit the whole molecule across the view (the FOV is set on the smaller dimension).
+        const a = this.rig.viewAspect;
+        const fovNm = a < 1 ? MOLECULE_FIT_NM : Math.min(MOLECULE_FIT_NM, Math.max(STAGE_FOV_NM[1], MOLECULE_FIT_NM / a));
+        return { target, fovNm, ...this.anglesFor(new THREE.Vector3(...FEATURED_FACING)) };
       }
-      case 2: {
-        const { target, dir } = this.mol.clusterView(iso);
-        return { target: molToWorld(target), fovNm: STAGE_FOV_NM[2], ...this.anglesFor(dir) };
-      }
-      case 3:
-        return { target: this.p0.clone(), fovNm: STAGE_FOV_NM[3], ...this.anglesFor(new THREE.Vector3(0.1, -1, 0.42)) };
-      case 4: {
+      case 2:
+        return { target: this.p0.clone(), fovNm: STAGE_FOV_NM[2], ...this.anglesFor(new THREE.Vector3(0.1, -1, 0.42)) };
+      case 3: {
         const s = this.store.state;
         const target = new THREE.Vector3(0, 0, 2.2);
-        if (s.mip) return { target, fovNm: STAGE_FOV_NM[4], ...this.anglesFor(new THREE.Vector3(0.0001, -0.0001, 1)) };
-        return { target, fovNm: STAGE_FOV_NM[4], ...this.anglesFor(new THREE.Vector3(0.25, -0.78, 0.95)) };
+        if (s.mip) return { target, fovNm: STAGE_FOV_NM[3], ...this.anglesFor(new THREE.Vector3(0.0001, -0.0001, 1)) };
+        return { target, fovNm: STAGE_FOV_NM[3], ...this.anglesFor(new THREE.Vector3(0.25, -0.78, 0.95)) };
       }
     }
   }
@@ -170,19 +169,21 @@ export class App {
   /** Stage button / key: fly there and set up stage behaviour. */
   goToStage(stage: Stage): void {
     this.autoStaging = true;
-    this.store.set({ stage, cam: [], ...this.stageEntryPatch(stage) });
+    this.store.set({ stage, cam: [], ...this.stageEntryPatch(stage, this.store.state.stage) });
     this.autoStaging = false;
     void this.rig.flyTo(this.stageView(stage));
   }
 
   /**
-   * What jumping to a stage implies: stage 2 plays the hybridisation; stages 3–4 finish it
-   * and wash (a skipped wash is kept only if the user already finished hybridising).
+   * What moving to a stage implies. Stages 2–3 image a finished experiment: if the probes
+   * aren't bound yet, bind and wash them; leaving stage 1 with bound but unwashed probes
+   * washes them, as a real protocol would before imaging. (Unwashed images stay available
+   * through the Washed toggle in stages 2–3.) Stage 1 waits for H.
    */
-  private stageEntryPatch(stage: Stage): Partial<AppState> {
+  private stageEntryPatch(stage: Stage, from: Stage): Partial<AppState> {
     const s = this.store.state;
-    if (stage === 2 && s.hyb === 'none') return { hyb: 'running' };
-    if (stage >= 3 && s.hyb !== 'bound') return { hyb: 'bound', washed: true };
+    if (stage >= 2 && s.hyb !== 'bound') return { hyb: 'bound', washed: true };
+    if (stage >= 2 && from === 1 && !s.washed) return { washed: true };
     return {};
   }
 
@@ -225,14 +226,14 @@ export class App {
     st.watch(['autoRotate'], (s) => (this.rig.autoRotateSpeed = s.autoRotate && !this.reducedMotion ? 0.12 : 0));
     let prevIso = st.state.isoform;
     st.watch(['isoform'], (s) => {
-      if (s.isoform !== prevIso && (s.stage === 1 || s.stage === 2)) void this.rig.flyTo(this.stageView(s.stage, s.isoform));
+      if (s.isoform !== prevIso && s.stage === 1) void this.rig.flyTo(this.stageView(s.stage, s.isoform));
       prevIso = s.isoform;
     });
     let prevStage = st.state.stage;
     st.watch(['stage'], (s) => {
       // Stage changes from outside the app (e.g. hash edits) also fly the camera.
       if (!this.autoStaging && s.stage !== prevStage) {
-        const patch = this.stageEntryPatch(s.stage);
+        const patch = this.stageEntryPatch(s.stage, prevStage);
         if (Object.keys(patch).length) st.set(patch);
         void this.rig.flyTo(this.stageView(s.stage));
       }
@@ -240,7 +241,7 @@ export class App {
       document.body.dataset.stage = String(s.stage);
     });
     st.watch(['mip'], (s) => {
-      if (s.stage === 4) void this.rig.flyTo(this.stageView(4));
+      if (s.stage === 3) void this.rig.flyTo(this.stageView(3));
     });
     st.watch(['seed'], (s) => {
       if (s.seed === this.cellShape.seed) return;
@@ -248,7 +249,7 @@ export class App {
       this.cellShape = makeCellShape(s.seed);
       this.p0.set(...this.cellShape.featured);
       // Keep the view locked on whatever it was showing if that was the molecules.
-      if (this.store.state.stage < 4) this.rig.shift(this.p0.clone().sub(prev));
+      if (this.store.state.stage < 3) this.rig.shift(this.p0.clone().sub(prev));
       this.records = makeRecords(this.cellShape);
       this.generation++;
       this.cell.setShape(this.cellShape, this.records);
@@ -362,7 +363,7 @@ export class App {
 
     // Optical and cell scenes.
     const dyes = (this.dyes = this.mol.boundDyes());
-    if (w.opt > 0.001 || s.stage === 3) this.opt.update(dt, this.opticalSpots(target, dyes), scale, nmPerPx, w.opt, target.clone().sub(this.p0));
+    if (w.opt > 0.001 || s.stage === 2) this.opt.update(dt, this.opticalSpots(target, dyes), scale, nmPerPx, w.opt, target.clone().sub(this.p0));
     this.cell.update(dt, dyes, this.p0, scale, nmPerPx, w.cell);
 
     this.renderer.dofEnabled = this.quality.level === 0;
@@ -415,10 +416,12 @@ export class App {
     // Hysteresis: only switch once clearly inside the new stage's range.
     const fov = Math.pow(10, scale);
     const clear =
-      (want === 2 && fov < 95) || (want === 1 && fov > 125 && fov < 520) || (want === 3 && fov > 700 && fov < 5200) || (want === 4 && fov > 7000);
+      (want === 1 && fov < 560) || (want === 2 && fov > 760 && fov < 5200) || (want === 3 && fov > 7000);
     if (!clear) return;
     this.autoStaging = true;
-    this.store.set({ stage: want });
+    // Zooming out of stage 1 onto the spots also washes (not binding: that stays up to H).
+    const wash = cur === 1 && want >= 2 && this.store.state.hyb === 'bound' && !this.store.state.washed;
+    this.store.set({ stage: want, ...(wash ? { washed: true } : {}) });
     this.autoStaging = false;
   }
 
@@ -502,31 +505,34 @@ export class App {
     const camDir = this.rig.camera.position.clone().sub(this.rig.target).normalize();
     if (n.dot(camDir) < 0) n.negate();
     if (Math.abs(n.z) > 0.97) n.x += 0.05;
-    void this.rig.flyTo({ target, fovNm: 400, ...this.anglesFor(n) });
+    void this.rig.flyTo({ target, fovNm: MOLECULE_FIT_NM, ...this.anglesFor(n) });
     this.opt.selected = r.key;
   }
 
   private readouts(): { k: string; v: string; cls?: string }[] {
     const scale = this.rig.s;
     const stage = this.displayStage(scale);
-    if (stage === 3) return this.opt.readouts();
-    if (stage === 4) return this.cell.readouts();
+    if (stage === 2) return this.opt.readouts();
+    if (stage === 3) return this.cell.readouts();
     const s = this.store.state;
     const out: { k: string; v: string; cls?: string }[] = [];
-    if (stage === 2 || s.hyb !== 'none') {
+    if (s.hyb !== 'none') {
       const n = (id: 'long' | 'short', set: 'cds' | 'distal') =>
         this.dyes.filter((d) => d.molecule === `featured-${id}` && d.set === set && d.weight > 0.99).length;
       out.push({ k: 'bound (long)', v: `${n('long', 'cds')} magenta · ${n('long', 'distal')} green` });
       out.push({ k: 'bound (short)', v: `${n('short', 'cds')} magenta · ${n('short', 'distal')} green` });
-      out.push({ k: 'unbound probes', v: s.washed ? 'washed away' : s.hyb === 'none' ? '—' : 'still present' });
+      out.push({ k: 'unbound probes', v: s.washed ? 'washed away' : 'still present' });
     }
     return out;
   }
 
   private hint(scale: number): string {
     const s = this.store.state;
-    if (s.hyb === 'none' && scale > Math.log10(400)) return 'No probes bound yet. Press <kbd>H</kbd> to hybridise, or <kbd>3</kbd> to jump ahead.';
-    if (s.hyb === 'none' && this.displayStage(scale) === 2) return 'Press <kbd>H</kbd> to start hybridisation.';
+    const stage = this.displayStage(scale);
+    if (s.hyb !== 'none' && !s.washed && stage >= 2) return 'Unbound probes haven’t been washed away, so the background is high. Press <kbd>W</kbd> to wash.';
+    if (s.hyb !== 'none') return '';
+    if (stage === 1) return 'Press <kbd>H</kbd> to add probes and watch them hybridise.';
+    return 'No probes bound yet. Press <kbd>H</kbd> to hybridise, or <kbd>2</kbd> to jump ahead.';
     return '';
   }
 

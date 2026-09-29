@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-/** Builds the PSF-convolved cell volume off the main thread (spec §6.4). */
+/** Builds the PSF-convolved cell volume off the main thread (spec §6.3). */
 import { buildStructure, pack, splatSpots, type VolumeParams } from '../data/volume';
 
 export interface BuildRequest {

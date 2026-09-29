@@ -1,5 +1,5 @@
 /**
- * Probes around one molecule (spec §6.2): target probes that find, dock and zip onto their
+ * Probes around one molecule (spec §6.1): target probes that find, dock and zip onto their
  * sites 5′→3′, excess probes that drift and occasionally bump off mismatched sequence, and
  * the wash that sweeps unbound probes away.
  */
@@ -330,7 +330,7 @@ export class ProbeSystem {
     }
   }
 
-  /** Jump to the finished state (e.g. deep link to stage 3). */
+  /** Jump to the finished state (e.g. deep link to stage 2). */
   finish(): void {
     this.active = true;
     this.running = false;

@@ -112,6 +112,10 @@ export class CameraRig {
     void this.controls.truck(fx * d, -fy * d, true);
   }
 
+  get viewAspect(): number {
+    return this.aspect;
+  }
+
   setAspect(aspect: number): void {
     this.aspect = aspect;
     this.camera.aspect = aspect;

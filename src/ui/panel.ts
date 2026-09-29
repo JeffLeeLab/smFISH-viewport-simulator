@@ -27,7 +27,7 @@ export class Panel {
 
     // Stage buttons.
     const stages = el('nav', { class: 'stages', 'aria-label': 'Stages' });
-    const stageBtns = ([1, 2, 3, 4] as Stage[]).map((n) => {
+    const stageBtns = ([1, 2, 3] as Stage[]).map((n) => {
       const b = el(
         'button',
         { class: 'stage-btn', type: 'button', 'aria-pressed': 'false', title: `${STAGE_NAMES[n]} (${n})` },
@@ -52,7 +52,7 @@ export class Panel {
       b.addEventListener('click', () => store.toggle(key));
       c.onRefresh((s) => {
         b.setAttribute('aria-pressed', String(s[key]));
-        if (key === 'chDapi') (b as HTMLButtonElement).disabled = s.stage !== 4;
+        if (key === 'chDapi') (b as HTMLButtonElement).disabled = s.stage !== 3;
       });
       return b;
     };
@@ -88,17 +88,7 @@ export class Panel {
         format: (v) => `${v}`,
       });
 
-    // Stage 1.
-    const s1 = c.section(
-      '1 · Molecule',
-      c.segmented({ label: 'Isoform', options: [{ value: 'long', label: 'Long' }, { value: 'short', label: 'Short' }], get: (s) => s.isoform, set: (v) => set({ isoform: v }) }),
-      c.toggle({ label: 'Region labels', get: (s) => s.labels, set: (v) => set({ labels: v }) }),
-      c.toggle({ label: 'Colour by nucleotide', get: (s) => s.colorByNt, set: (v) => set({ colorByNt: v }) }),
-      c.toggle({ label: 'Auto-rotate', get: (s) => s.autoRotate, set: (v) => set({ autoRotate: v }) }),
-      el('div', { class: 'hint-text' }, 'Zoom in (below ~120 nm) to see individual bases. Made-up sequence for teaching.'),
-    );
-
-    // Stage 2.
+    // Stage 1: the molecule and its probes.
     const hybBtn = c.button('Hybridise', () => set({ hyb: 'running' }), { kbd: 'H', primary: true });
     const washBtn = c.button('Wash', () => set({ washed: true }), { kbd: 'W' });
     c.onRefresh((s) => {
@@ -107,21 +97,23 @@ export class Panel {
       washBtn.style.opacity = s.hyb === 'none' || s.washed ? '0.45' : '';
       washBtn.firstChild!.textContent = s.washed ? 'Washed ' : 'Wash ';
     });
-    const isoBtn = c.button('Show short isoform', () => set({ isoform: store.state.isoform === 'long' ? 'short' : 'long' }));
-    c.onRefresh((s) => (isoBtn.textContent = s.isoform === 'long' ? 'Show short isoform' : 'Show long isoform'));
-    const s2 = c.section(
-      '2 · Hybridise',
-      el('div', { class: 'btn-row', style: 'margin-top:0' }, hybBtn, washBtn, isoBtn),
+    const s1 = c.section(
+      `1 · ${STAGE_NAMES[1]}`,
+      el('div', { class: 'btn-row', style: 'margin-top:0' }, hybBtn, washBtn),
+      c.segmented({ label: 'Isoform', options: [{ value: 'long', label: 'Long' }, { value: 'short', label: 'Short' }], get: (s) => s.isoform, set: (v) => set({ isoform: v }) }),
+      probesSlider(),
       c.segmented({ label: 'Duplex', kbd: 'S', options: [{ value: 'schematic', label: 'Schematic' }, { value: 'helical', label: 'Helical' }], get: (s) => (s.helical ? 'helical' : 'schematic'), set: (v) => set({ helical: v === 'helical' }) }),
+      c.toggle({ label: 'Region labels', get: (s) => s.labels, set: (v) => set({ labels: v }) }),
       c.toggle({ label: '5′ / 3′ labels', get: (s) => s.showEnds, set: (v) => set({ showEnds: v }) }),
       c.toggle({ label: 'CDS set (magenta)', get: (s) => s.showCdsSet, set: (v) => set({ showCdsSet: v }) }),
       c.toggle({ label: 'Distal 3′UTR set (green)', get: (s) => s.showDistalSet, set: (v) => set({ showDistalSet: v }) }),
-      probesSlider(),
+      c.toggle({ label: 'Colour by nucleotide', get: (s) => s.colorByNt, set: (v) => set({ colorByNt: v }) }),
+      c.toggle({ label: 'Auto-rotate', get: (s) => s.autoRotate, set: (v) => set({ autoRotate: v }) }),
       c.slider({ label: 'Animation speed', min: 0.25, max: 2, step: 0.25, get: (s) => s.animSpeed, set: (v) => set({ animSpeed: v }), format: (v) => `${v}×` }),
-      el('div', { class: 'hint-text' }, 'Real smFISH designs typically use ~20–48 probes per set.'),
+      el('div', { class: 'hint-text' }, 'Zoom in (below ~120 nm) to see the bases and the helix up close. Real smFISH designs use ~20–48 probes per set. Made-up sequence for teaching.'),
     );
 
-    // Stage 3.
+    // Stage 2.
     const imm = c.segmented<ImmersionId>({
       label: 'Immersion',
       options: (Object.keys(IMMERSIONS) as ImmersionId[]).map((id) => ({ value: id, label: IMMERSIONS[id].name })),
@@ -147,8 +139,8 @@ export class Panel {
       set: (v) => set({ focalZ: v }),
       format: (v) => `${v >= 0 ? '+' : ''}${(v * 1000).toFixed(0)} nm`,
     });
-    const s3 = c.section(
-      '3 · Diffraction',
+    const s2 = c.section(
+      `2 · ${STAGE_NAMES[2]}`,
       c.toggle({ label: 'Diffraction', get: (s) => s.diffraction, set: (v) => set({ diffraction: v }) }),
       c.toggle({ label: 'FWHM ellipsoid', get: (s) => s.ellipsoid, set: (v) => set({ ellipsoid: v }) }),
       imm,
@@ -164,9 +156,9 @@ export class Panel {
       c.toggle({ label: 'Washed', kbd: 'W', get: (s) => s.washed, set: (v) => set({ washed: v }) }),
     );
 
-    // Stage 4.
-    const s4 = c.section(
-      '4 · Cell',
+    // Stage 3.
+    const s3 = c.section(
+      `3 · ${STAGE_NAMES[3]}`,
       c.segmented({ label: 'View', kbd: 'P', options: [{ value: '3d', label: '3D' }, { value: 'mip', label: 'MIP' }], get: (s) => (s.mip ? 'mip' : '3d'), set: (v) => set({ mip: v === 'mip' }) }),
       c.toggle({ label: 'Cell outline', get: (s) => s.cellOutline, set: (v) => set({ cellOutline: v }) }),
       c.toggle({ label: 'Lab backdrop', get: (s) => s.labBackdrop, set: (v) => set({ labBackdrop: v }) }),
@@ -191,12 +183,13 @@ export class Panel {
       }),
       probesSlider(),
       c.toggle({ label: 'Camera noise', get: (s) => s.noise, set: (v) => set({ noise: v }) }),
+      c.toggle({ label: 'Washed', kbd: 'W', get: (s) => s.washed, set: (v) => set({ washed: v }) }),
       el('div', { class: 'btn-row' }, c.button('Randomise cell', () => set({ seed: (store.state.seed % 9973) + 1 + Math.floor(Math.random() * 500) }))),
       app.cell.countsElement,
     );
 
-    this.sections = { 1: s1, 2: s2, 3: s3, 4: s4 };
-    root.append(s1, s2, s3, s4);
+    this.sections = { 1: s1, 2: s2, 3: s3 };
+    root.append(s1, s2, s3);
     store.watch(['stage'], (s) => {
       for (const [k, sec] of Object.entries(this.sections)) sec.hidden = Number(k) !== s.stage;
     });

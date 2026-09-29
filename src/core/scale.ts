@@ -7,18 +7,19 @@ export const S_MIN = Math.log10(15);
 export const S_MAX = Math.log10(40000);
 
 /** Stage presets: field of view (nm). */
-export const STAGE_FOV_NM: Record<Stage, number> = { 1: 330, 2: 40, 3: 2800, 4: 25000 };
+export const STAGE_FOV_NM: Record<Stage, number> = { 1: 360, 2: 2800, 3: 25000 };
+/** Width the stage 1 view must fit across (the long isoform plus its labels), nm. */
+export const MOLECULE_FIT_NM = 440;
 
 export const STAGE_NAMES: Record<Stage, string> = {
-  1: 'Molecule',
-  2: 'Hybridise',
-  3: 'Diffraction',
-  4: 'Cell',
+  1: 'Molecule & probes',
+  2: 'Diffraction',
+  3: 'Cell',
 };
 
 const L = Math.log10;
 /** Cross-fade bands (spec §3). */
-export const BAND_MOL_OPT: [number, number] = [L(400), L(800)];
+export const BAND_MOL_OPT: [number, number] = [L(480), L(950)];
 export const BAND_OPT_CELL: [number, number] = [L(4000), L(8000)];
 /** Bases grow in below this FOV (spec §4.6). */
 export const BASE_LOD: [number, number] = [L(90), L(140)];
@@ -42,10 +43,9 @@ export function sceneWeights(s: number): SceneWeights {
 
 /** The stage whose scale range contains s (used for the HUD when the user scrolls freely). */
 export function stageForScale(s: number): Stage {
-  if (s < L(110)) return 2;
-  if (s < L(600)) return 1;
-  if (s < L(6000)) return 3;
-  return 4;
+  if (s < L(650)) return 1;
+  if (s < L(6000)) return 2;
+  return 3;
 }
 
 /** 1-2-5 scale bar: the largest nice length (nm) that fits in maxPx. */

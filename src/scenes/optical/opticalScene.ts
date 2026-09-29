@@ -1,6 +1,6 @@
 /**
  * Optical scene (1 unit = 1 µm), origin at the midpoint of the featured molecules
- * (spec §6.3). Every bound fluorophore becomes a 3D Gaussian PSF. The volume is rendered
+ * (spec §6.2). Every bound fluorophore becomes a 3D Gaussian PSF. The volume is rendered
  * with the closed-form line integral of each Gaussian along the view ray (emission-only
  * volume rendering), so no ray marching is needed.
  */
@@ -381,7 +381,7 @@ export class OpticalScene {
   update(dt: number, inputs: OpticalSpotInput[], scale: number, nmPerPx: number, weight: number, target: THREE.Vector3): void {
     this.weight = weight;
     const s = this.store.state;
-    const active = weight > 0.001 || s.stage === 3;
+    const active = weight > 0.001 || s.stage === 2;
     if (!active) return;
 
     // Assign spots to pool slots, keeping each RNA in the same slot while it stays in view.

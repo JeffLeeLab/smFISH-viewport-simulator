@@ -27,10 +27,9 @@ async function canvasStats(page: Page) {
 }
 
 const STAGES = [
-  { hash: 'stage=1', name: 'Molecule' },
-  { hash: 'stage=2', name: 'Hybridise' },
-  { hash: 'stage=3', name: 'Diffraction' },
-  { hash: 'stage=4', name: 'Cell' },
+  { hash: 'stage=1', name: 'Molecule & probes' },
+  { hash: 'stage=2', name: 'Diffraction' },
+  { hash: 'stage=3', name: 'Cell' },
 ];
 
 for (const s of STAGES) {
@@ -39,7 +38,7 @@ for (const s of STAGES) {
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(`/#${s.hash}`);
     await expect(page.locator('.hud-stage .name')).toHaveText(s.name, { timeout: 15_000 });
-    await page.waitForTimeout(s.name === 'Hybridise' ? 7000 : 3000);
+    await page.waitForTimeout(3000);
     const stats = await canvasStats(page);
     expect(stats.max, 'something bright is drawn').toBeGreaterThan(60);
     expect(stats.std, 'the frame is not a flat colour').toBeGreaterThan(2);
@@ -50,15 +49,50 @@ for (const s of STAGES) {
 
 test('changing the URL hash changes the stage', async ({ page }) => {
   await page.goto('/#stage=1');
-  await expect(page.locator('.hud-stage .name')).toHaveText('Molecule');
-  await page.evaluate(() => (location.hash = '#stage=4'));
+  await expect(page.locator('.hud-stage .name')).toHaveText('Molecule & probes');
+  await page.evaluate(() => (location.hash = '#stage=3'));
   await expect(page.locator('.hud-stage .name')).toHaveText('Cell', { timeout: 10_000 });
+});
+
+test('H hybridises the probes in the whole-molecule view', async ({ page }, info) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/');
+  await expect(page.locator('.hud-stage .name')).toHaveText('Molecule & probes', { timeout: 15_000 });
+  await page.waitForTimeout(1500);
+  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('h');
+  await page.waitForTimeout(7000);
+  const st = await page.evaluate(() => ({
+    fov: Math.pow(10, smfish.app.rig.s),
+    hyb: smfish.store.state.hyb,
+    bound: smfish.app.dyes.filter((d: { molecule: string; weight: number }) => d.molecule === 'featured-long' && d.weight > 0.99).length,
+  }));
+  expect(st.fov, 'the camera stays on the whole molecule').toBeGreaterThan(200);
+  expect(st.hyb).toBe('bound');
+  expect(st.bound).toBe(20);
+  await page.screenshot({ path: info.outputPath('hybridised.png') });
+  expect(errors).toEqual([]);
+});
+
+test('moving on from stage 1 after hybridising washes away unbound probes', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.hud-stage .name')).toHaveText('Molecule & probes', { timeout: 15_000 });
+  await page.evaluate(() => smfish.store.set({ hyb: 'running' }));
+  await expect.poll(() => page.evaluate(() => smfish.store.state.hyb), { timeout: 15_000 }).toBe('bound');
+  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('3');
+  await expect(page.locator('.hud-stage .name')).toHaveText('Cell', { timeout: 10_000 });
+  expect(await page.evaluate(() => smfish.store.state.washed)).toBe(true);
+  // Un-washing on purpose is still possible, and the HUD explains the high background.
+  await page.evaluate(() => smfish.store.set({ washed: false }));
+  await expect(page.locator('.hud-hint')).toContainText('washed away');
 });
 
 test('keyboard-only walkthrough of the stages', async ({ page }) => {
   await page.goto('/');
   await page.locator('body').click({ position: { x: 5, y: 5 } });
-  for (const [key, name] of [['2', 'Hybridise'], ['3', 'Diffraction'], ['4', 'Cell'], ['1', 'Molecule']] as const) {
+  for (const [key, name] of [['2', 'Diffraction'], ['3', 'Cell'], ['1', 'Molecule & probes']] as const) {
     await page.keyboard.press(key);
     await expect(page.locator('.stage-btn[aria-pressed="true"] .t')).toHaveText(name);
     await expect(page.locator('.hud-stage .name')).toHaveText(name, { timeout: 10_000 });
@@ -70,7 +104,7 @@ test('keyboard-only walkthrough of the stages', async ({ page }) => {
 });
 
 test('Shift-drag and arrow keys pan instead of orbiting', async ({ page }) => {
-  await page.goto('/#stage=3');
+  await page.goto('/#stage=2');
   await page.waitForTimeout(2500);
   const view = () => page.evaluate(() => {
     const v = smfish.app.rig.getView();
@@ -100,7 +134,7 @@ test('Shift-drag and arrow keys pan instead of orbiting', async ({ page }) => {
 test('double-click zooms from the cell into any RNA, then into its molecule', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/#stage=4');
+  await page.goto('/#stage=3');
   await page.waitForTimeout(3500);
   // Screen position of an ordinary (non-featured) cytoplasmic RNA.
   const target = await page.evaluate(() => {
@@ -123,6 +157,6 @@ test('double-click zooms from the cell into any RNA, then into its molecule', as
   const after = await page.evaluate(() => ({ fov: Math.pow(10, smfish.app.rig.s), live: [...smfish.app.mol.liveKeys()] }));
   expect(after.fov).toBeLessThan(600);
   expect(after.live).toContain(target.key);
-  await expect(page.locator('.hud-stage .name')).toHaveText('Molecule');
+  await expect(page.locator('.hud-stage .name')).toHaveText('Molecule & probes');
   expect(errors).toEqual([]);
 });

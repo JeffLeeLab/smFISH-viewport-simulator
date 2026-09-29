@@ -3,12 +3,12 @@ import { IMMERSIONS, clampNa, type ImmersionId } from '../data/optics';
 import { PROBES_DEFAULT, PROBES_MAX } from '../data/probes';
 import { DEFAULT_LONG_FRACTION } from '../data/cell';
 
-export type Stage = 1 | 2 | 3 | 4;
+export type Stage = 1 | 2 | 3;
 export type HybPhase = 'none' | 'running' | 'bound';
 
 export interface AppState {
   stage: Stage;
-  /** Which molecule stages 1–2 focus on. */
+  /** Which molecule stage 1 focuses on. */
   isoform: 'long' | 'short';
   labels: boolean;
   colorByNt: boolean;
@@ -25,7 +25,7 @@ export interface AppState {
   ellipsoid: boolean;
   immersion: ImmersionId;
   na: number;
-  /** Focal plane height relative to the featured molecules (stage 3) or coverslip (stage 4), µm. */
+  /** Focal plane height relative to the featured molecules (stage 2) or coverslip (stage 3), µm. */
   focalZ: number;
   cellFocalZ: number;
   chGreen: boolean;
@@ -52,7 +52,7 @@ export const DEFAULT_STATE: AppState = {
   labels: true,
   colorByNt: false,
   autoRotate: false,
-  helical: false,
+  helical: true,
   showEnds: true,
   showCdsSet: true,
   showDistalSet: true,
@@ -144,7 +144,7 @@ export function toHash(s: AppState): string {
   p.set('n', String(s.probesPerSet));
   p.set('ch', (s.chGreen ? 'g' : '') + (s.chMagenta ? 'm' : '') + (s.chDapi ? 'd' : '') || '-');
   p.set('wash', s.washed ? '1' : '0');
-  if (s.helical) p.set('helix', '1');
+  if (!s.helical) p.set('helix', '0');
   if (s.longFraction !== DEFAULT_LONG_FRACTION) p.set('long', String(Math.round(s.longFraction * 100)));
   if (s.seed !== DEFAULT_STATE.seed) p.set('seed', String(s.seed));
   if (s.mip) p.set('mip', '1');
@@ -157,7 +157,7 @@ export function fromHash(hash: string): Partial<AppState> {
   const p = new URLSearchParams(hash.replace(/^#/, ''));
   const out: Partial<AppState> = {};
   const stage = Number(p.get('stage'));
-  if ([1, 2, 3, 4].includes(stage)) out.stage = stage as Stage;
+  if ([1, 2, 3].includes(stage)) out.stage = stage as Stage;
   const iso = p.get('iso');
   if (iso === 'long' || iso === 'short') out.isoform = iso;
   const imm = p.get('imm');
@@ -192,13 +192,9 @@ export function initialState(hash: string): AppState {
   const patch = fromHash(hash);
   const s = { ...DEFAULT_STATE, ...patch };
   // Jumping straight to the optical or cell stage implies a finished, washed experiment.
-  if (s.stage >= 3) {
+  if (s.stage >= 2) {
     s.hyb = 'bound';
     if (patch.washed === undefined) s.washed = true;
-  } else if (s.stage === 2) {
-    // A link to the hybridisation stage plays the hybridisation.
-    s.hyb = 'running';
-    if (patch.washed === undefined) s.washed = false;
   }
   return s;
 }

@@ -2,10 +2,9 @@
 
 An interactive three.js visualisation of single-molecule FISH for teaching and outreach. It is one continuous zoom:
 
-1. **Molecule:** an mRNA with its regions coloured.
-2. **Hybridise:** 3′-labelled probes bind in two colours.
-3. **Diffraction:** the probes blur into diffraction-limited spots.
-4. **Cell:** the spots sit in a whole cell.
+1. **Molecule & probes:** a helical mRNA with its regions coloured; 3′-labelled probes bind in two colours.
+2. **Diffraction:** the probes blur into diffraction-limited spots.
+3. **Cell:** the spots sit in a whole cell (80 mRNAs).
 
 The design and science are specified in [spec.md](spec.md).
 
@@ -35,7 +34,7 @@ The WebGL2 app needs a recent Chrome, Edge, Firefox or Safari. Append `?quality=
 - **Scroll or pinch** to zoom through the scales. **Drag** to orbit.
 - **Shift-, Ctrl- or ⌘-drag** to pan up/down/left/right (also right-drag, two-finger drag, or the arrow keys).
 - **Double-click** any RNA in the cell to zoom to its spot, and again to see the molecule with its probes.
-- Press **1–4** to fly to a stage, or **?** to see all shortcuts.
+- Press **1–3** to fly to a stage, **H** to hybridise, or **?** to see all shortcuts.
 - The **URL** updates as you explore (stage, camera, NA, probe count, channels, wash, isoform ratio and seed), so a lecturer can copy it and link straight to a view.
 - **F** enters presentation mode for projectors.
 
@@ -46,7 +45,7 @@ src/
   main.ts, app.ts          bootstrap, store ↔ scene wiring, render loop, input
   state/store.ts           observable app state + URL-hash sync
   core/                    renderer + compositing, camera rig and flights, scale axis, quality manager
-  data/                    pure, tested models: rng, transcript, probes, dyes, optics, conformation (folded strand),
+  data/                    pure, tested models: rng, transcript, probes, dyes, optics, conformation (helical folded strand),
                            model (molecule library + placements), population (every cell RNA),
                            world model, cell, volume
   scenes/molecular/        coil backbone (dynamic tubes), bases with LOD, probe animation system
@@ -68,16 +67,16 @@ Key implementation choices:
   - Spots are splatted directly as separable Gaussians. That is fast: NA and probe-count changes rebuild in about 20 ms, and a new cell seed in about 70 ms.
   - The DAPI chromatin texture is cached per cell seed.
 - **Every RNA is a molecule.** Each cell RNA is a record (position, rotation, shape variant) resolved against a small molecule library. Near the camera target the molecular scene builds up to 8 of them in full detail, and the optical scene draws PSFs for up to 20; the cell volume splats every RNA's actual dyes. So you can zoom continuously into any spot.
-- **The folded strand** keeps the RNA to scale and uncrossed while staying compact: the long isoform's row length stacks its CDS and distal probe clusters in one diffraction-limited spot (~100 nm apart).
+- **The helical folded strand.** The single strand winds around a helix axis as a right-handed, A-form-like helix (~11 nt/turn); the axis is folded into a few long rows, keeping the RNA to scale and uncrossed while staying compact. The long isoform's row length stacks its CDS and distal probe clusters in one diffraction-limited spot (~65 nm apart). Each probe site's frame starts in phase with the free strand's helix, so a helical hybrid wraps along the existing helix and binding barely moves the rest of the molecule.
 - **The lab backdrop** is a procedural room rendered at quarter resolution from a fixed eye that follows the camera heading (tilt halved), blurred in the composite pass behind the cell layer.
-- **Stage 2 camera.** The close-up is chosen from the predicted *bound* pose, looking side-on at the probe cluster from the least cluttered direction. A near clip plane cuts away strands in front.
+- **Stage 1 framing.** Molecule and hybridisation share one stage, so the animation plays across the whole molecule. The stage 1 FOV adapts to the viewport's aspect so the molecule always fits, and the molecular→optical cross-fade starts at 480 nm so it stays crisp.
 
 ## Dev helpers
 
 `scripts/shot.mjs`, `scripts/flight.mjs`, `scripts/interact.mjs`, `scripts/zoomcell.mjs` and `scripts/perf.mjs` capture screenshots, flight sequences, hover/zoom checks and frame timings from a running dev server with headless Chrome. For example:
 
 ```sh
-node scripts/shot.mjs /tmp/shots s3='stage=3@3000' mip='stage=4&mip=1@4000'
+node scripts/shot.mjs /tmp/shots s2='stage=2@3000' mip='stage=3&mip=1@4000'
 ```
 
 ## Differences from spec.md
@@ -86,6 +85,6 @@ node scripts/shot.mjs /tmp/shots s3='stage=3@3000' mip='stage=4&mip=1@4000'
 |---|---|
 | 2D inset computed on the GPU | Computed on the CPU from the same PSF parameters. It needs Poisson noise per pixel and it is small (64² or 256² pixels). The spec's goal, that 2D and 3D always agree, still holds. |
 | "Spots above or below the plane dim and blur" | The Gaussian model makes out-of-focus spots **dim** but not wider. It's listed under "idealised Gaussian" in the simplifications. |
-| Stage FOVs 300 nm / 2 µm | 330 nm and 2.8 µm, which frame the folded strand and the two PSF columns better. (spec.md now records these.) |
-| Minimum on-screen size for fluorophores and the cap | Also applied to the RNA backbone, and the strand glows faintly when zoomed out, so it reads at 300 nm. The caption notes it. |
+| Four stages; stage FOVs 300 nm / 2 µm (original brief) | Three stages (molecule and hybridisation merged, at the user's request) at ~360–440 nm, 2.8 µm and 25 µm. spec.md now records these. |
+| Minimum on-screen size for fluorophores and the cap | Also applied to the RNA backbone, and the strand glows faintly when zoomed out, so it reads at the stage 1 view. The caption notes it. |
 | Stretch goals | Not started. |

@@ -1,6 +1,6 @@
 /**
- * Cell scene (1 unit = 1 µm, coverslip at z = 0; spec §6.4): a translucent adherent cell,
- * DAPI-stained nucleus and ~160 mRNA spots, ray-marched from a PSF-convolved volume built
+ * Cell scene (1 unit = 1 µm, coverslip at z = 0; spec §6.3): a translucent adherent cell,
+ * DAPI-stained nucleus and ~80 mRNA spots, ray-marched from a PSF-convolved volume built
  * in a Web Worker.
  */
 import * as THREE from 'three';
@@ -440,7 +440,7 @@ export class CellScene {
       geneLength: polyA.start,
     });
     this.updateCounts(s);
-    const active = weight > 0.001 || s.stage === 4;
+    const active = weight > 0.001 || s.stage === 3;
     if (!active) return;
 
     // Volume rebuild when anything that shapes it changes.

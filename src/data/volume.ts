@@ -1,5 +1,5 @@
 /**
- * PSF-convolved cell volume (spec §6.4). Values are "photons per camera pixel if the focal
+ * PSF-convolved cell volume (spec §6.3). Values are "photons per camera pixel if the focal
  * plane were here", i.e. a z-stack. Channels are packed as RGBA8 with a square-root
  * encoding: R = magenta (Alexa 647), G = green (Alexa 546), B = DAPI, A = cytoplasm mask.
  */

@@ -46,7 +46,7 @@ describe('cell model', () => {
       expect(insideNucleus(shape, fx, fy, fz)).toBe(false);
     });
 
-    it(`seed ${seed}: places ~150 cytoplasmic and ~10 nuclear mRNAs plus 2 transcription sites`, () => {
+    it(`seed ${seed}: places ~74 cytoplasmic and ~6 nuclear mRNAs plus 2 transcription sites`, () => {
       const seeds = seedSpots(shape);
       const cyto = seeds.filter((s) => s.kind === 'cyto' || s.kind === 'featured');
       expect(cyto).toHaveLength(N_CYTO);
@@ -63,7 +63,7 @@ describe('cell model', () => {
   it('counts long/short isoforms from the ratio, with the featured pair fixed', () => {
     const seeds = seedSpots(makeCellShape(1));
     const c60 = countSpots(resolveSpots(seeds, params(10, 0.6)));
-    expect(c60.total).toBe(160);
+    expect(c60.total).toBe(80);
     expect(c60.long / c60.total).toBeGreaterThan(0.45);
     expect(c60.long / c60.total).toBeLessThan(0.75);
     const c0 = countSpots(resolveSpots(seeds, params(10, 0)));

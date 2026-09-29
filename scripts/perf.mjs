@@ -8,7 +8,7 @@ const timing = () => page.evaluate(() => new Promise((res) => {
   const f = () => { const now = performance.now(); t.push(now - last); last = now; if (t.length < 150) requestAnimationFrame(f); else { t.sort((a, b) => a - b); res([t[75].toFixed(1), t[142].toFixed(1)]); } };
   requestAnimationFrame(f);
 }));
-await page.goto('http://localhost:5173/#stage=4&n=48');
+await page.goto('http://localhost:5173/#stage=3&n=48');
 await page.waitForTimeout(3500);
 console.log('cell N=48 median/p95 ms', await timing());
 await page.evaluate(() => { const a = smfish.app; a.zoomTo(a.records.find((r) => r.key === 'rna-40')); });

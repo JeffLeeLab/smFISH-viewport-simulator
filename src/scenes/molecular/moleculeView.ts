@@ -11,7 +11,7 @@ import { CAP_COLOR, NT_COLOR, REGION_COLOR } from '../palette';
 
 export const BACKBONE_RADIUS = 0.38;
 export const POLYA_RADIUS = 0.28;
-const BASE_LEN_FREE = 0.9;
+const BASE_LEN_FREE = 0.6;
 const BASE_RADIUS = 0.13;
 const CAP_RADIUS = 0.95;
 
@@ -103,9 +103,9 @@ export class MoleculeView {
     // so labels sit on the periphery instead of piling up in the middle.
     const rest = this.model.chain.rest;
     const [cx, cy, cz] = this.model.chain.centroid;
-    const labelNt = (start: number, end: number) => {
-      const a = start + Math.floor((end - start) * 0.2);
-      const b = start + Math.ceil((end - start) * 0.8);
+    const labelNt = (start: number, end: number, from = 0.2, to = 0.8) => {
+      const a = start + Math.floor((end - start) * from);
+      const b = start + Math.ceil((end - start) * to);
       let best = a;
       let bestD = -1;
       for (let i = a; i < b; i++) {
@@ -124,7 +124,9 @@ export class MoleculeView {
       const obj = new CSS2DObject(el);
       obj.center.set(0.5, 1.3);
       this.labelRoot.add(obj);
-      this.labels.push({ obj, nt: labelNt(r.start, r.end), region: r.id });
+      // The poly(A) label stays near the tail's base, clear of the 3′ end label.
+      const nt = r.id === 'polya' ? labelNt(r.start, r.end, 0.15, 0.45) : labelNt(r.start, r.end);
+      this.labels.push({ obj, nt, region: r.id });
     }
     const capEl = document.createElement('div');
     capEl.className = 'mol-label region-label';
